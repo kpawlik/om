@@ -104,6 +104,20 @@ func (om *OrderedMap) MarshalJSON() (res []byte, err error) {
 	return
 }
 
+
+// this implements type json.Marshaler interface, so can be called in json.Marshal(om)
+func (om *OrderedMap) MarshalIndent(indent string) (res []byte, err error) {
+	if res, err = om.MarshalJSON(); err!=nil{
+		return
+	}
+	buff := bytes.NewBuffer([]byte{})
+	if err = json.Indent(buff, res, "", indent); err != nil{
+		return
+	}
+	res = buff.Bytes()
+	return
+}
+
 func ParseArray(dec *json.Decoder) (arr []interface{}, err error) {
 	var t json.Token
 	arr = make([]interface{}, 0)
