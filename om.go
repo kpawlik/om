@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 )
 
 type OrderedMap struct {
+	mutex sync.RWMutex
 	Map  map[string]interface{}
 	Keys []string
 }
@@ -18,7 +20,25 @@ func NewOrderedMap() *OrderedMap {
 	return &OrderedMap{
 		Map:  make(map[string]interface{}),
 		Keys: []string{},
+		mutex: sync.RWMutex{},
 	}
+}
+
+
+func (om *OrderedMap) SetChild (key string, child *OrderedMap){
+	om.mutex.Lock()
+	defer om.mutex.Unlock()
+	om.Map[key] = child
+	om.Keys = append(om.Keys, key)
+}
+
+func (om *OrderedMap) CreateChild (key string) *OrderedMap{
+	om.mutex.Lock()
+	defer om.mutex.Unlock()
+	child := NewOrderedMap()
+	om.Map[key] = child
+	om.Keys = append(om.Keys, key)
+	return child
 }
 
 func (om *OrderedMap) ParseObject(dec *json.Decoder) (err error) {
