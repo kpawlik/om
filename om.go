@@ -5,34 +5,49 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 )
 
 type OrderedMap struct {
 	mutex sync.RWMutex
-	Map  map[string]interface{}
-	Keys []string
+	Map   map[string]interface{}
+	Keys  []string
 }
 
 // Create a new OrderedMap
 func NewOrderedMap() *OrderedMap {
 	return &OrderedMap{
-		Map:  make(map[string]interface{}),
-		Keys: []string{},
+		Map:   make(map[string]interface{}),
+		Keys:  []string{},
 		mutex: sync.RWMutex{},
 	}
 }
 
-
-func (om *OrderedMap) SetChild (key string, child *OrderedMap){
+// update or add new value
+func (om *OrderedMap) Set(key string, value any) {
 	om.mutex.Lock()
 	defer om.mutex.Unlock()
-	om.Map[key] = child
-	om.Keys = append(om.Keys, key)
+	if _, ok := om.Map[key]; !ok {
+		om.Keys = append(om.Keys, key)
+	}
+	om.Map[key] = value
 }
 
-func (om *OrderedMap) CreateChild (key string) *OrderedMap{
+// delete value and key
+func (om *OrderedMap) Delete(key string) {
+	om.mutex.Lock()
+	defer om.mutex.Unlock()
+	delete(om.Map, key)
+	if index := slices.Index(om.Keys, key); index > 0 {
+		om.Keys = slices.Delete(om.Keys, index, index+1)
+	}
+
+}
+
+// create child OM
+func (om *OrderedMap) CreateChild(key string) *OrderedMap {
 	om.mutex.Lock()
 	defer om.mutex.Unlock()
 	child := NewOrderedMap()
@@ -124,14 +139,13 @@ func (om *OrderedMap) MarshalJSON() (res []byte, err error) {
 	return
 }
 
-
 // this implements type json.Marshaler interface, so can be called in json.Marshal(om)
 func (om *OrderedMap) MarshalIndent(indent string) (res []byte, err error) {
-	if res, err = om.MarshalJSON(); err!=nil{
+	if res, err = om.MarshalJSON(); err != nil {
 		return
 	}
 	buff := bytes.NewBuffer([]byte{})
-	if err = json.Indent(buff, res, "", indent); err != nil{
+	if err = json.Indent(buff, res, "", indent); err != nil {
 		return
 	}
 	res = buff.Bytes()
